@@ -1,4 +1,5 @@
 ﻿using Autofac.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Nop.Core.Configuration;
 using Nop.Core.Infrastructure;
 using Nop.Web.Framework.Infrastructure.Extensions;
@@ -21,6 +22,9 @@ public partial class Program
 
         //load application settings
         builder.Services.ConfigureApplicationSettings(builder);
+
+        builder.Services.AddControllers().PartManager.ApplicationParts.Add(new AssemblyPart(typeof(Nop.Web.ApiControllers.CatalogController).Assembly));
+
 
         var appSettings = Singleton<AppSettings>.Instance;
         var useAutofac = appSettings.Get<CommonConfig>().UseAutofac;

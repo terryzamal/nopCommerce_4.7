@@ -5,6 +5,7 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json.Serialization;
 using Nop.Core;
 using Nop.Core.Configuration;
@@ -284,9 +286,28 @@ public static class ServiceCollectionExtensions
         //set default authentication schemes
         var authenticationBuilder = services.AddAuthentication(options =>
         {
-            options.DefaultChallengeScheme = NopAuthenticationDefaults.AuthenticationScheme;
-            options.DefaultScheme = NopAuthenticationDefaults.AuthenticationScheme;
+            //options.DefaultChallengeScheme = NopAuthenticationDefaults.AuthenticationScheme;
+            //options.DefaultScheme = NopAuthenticationDefaults.AuthenticationScheme;
             options.DefaultSignInScheme = NopAuthenticationDefaults.ExternalAuthenticationScheme;
+            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        });
+
+        authenticationBuilder.AddJwtBearer(options =>
+        {
+            options.SaveToken = true;
+            options.RequireHttpsMetadata = false;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = true,
+                ValidAudience = "domain.com", // NOTE: USE THE REAL DOMAIN NAME
+                ValidateIssuer = true,
+                ValidIssuer = "domain.com", // NOTE: USE THE REAL DOMAIN NAME
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes("396B5DD9-CC75-411C-9311-5B6E1F391B89")) // NOTE: THIS SHOULD BE A SECRET KEY NOT TO BE SHARED; REPLACE THIS GUID WITH A UNIQUE ONE
+            };
         });
 
         //add main cookie authentication
@@ -308,6 +329,7 @@ public static class ServiceCollectionExtensions
             options.LoginPath = NopAuthenticationDefaults.LoginPath;
             options.AccessDeniedPath = NopAuthenticationDefaults.AccessDeniedPath;
         });
+
 
         //register and configure external authentication plugins now
         var typeFinder = Singleton<ITypeFinder>.Instance;
