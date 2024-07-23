@@ -1,5 +1,6 @@
 ﻿using Autofac.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.OpenApi.Models;
 using Nop.Core.Configuration;
 using Nop.Core.Infrastructure;
 using Nop.Web.Framework.Infrastructure.Extensions;
@@ -25,6 +26,31 @@ public partial class Program
 
         builder.Services.AddControllers().PartManager.ApplicationParts.Add(new AssemblyPart(typeof(Nop.Web.ApiControllers.CatalogController).Assembly));
 
+        // Add Swagger services
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Version = "v1",
+                Title = "Nop Commerce 4.7 API",
+                Description = "A micro service implementation of the Nope commerce",
+                TermsOfService = new Uri("https://example.com/terms"),
+                Contact = new OpenApiContact
+                {
+                    Name = "Example Contact",
+                    Email = string.Empty,
+                    Url = new Uri("https://example.com/contact"),
+                },
+                License = new OpenApiLicense
+                {
+                    Name = "Example License",
+                    Url = new Uri("https://example.com/license"),
+                }
+            });
+        });
+
+
 
         var appSettings = Singleton<AppSettings>.Instance;
         var useAutofac = appSettings.Get<CommonConfig>().UseAutofac;
@@ -44,6 +70,22 @@ public partial class Program
         builder.Services.ConfigureApplicationServices(builder);
 
         var app = builder.Build();
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Nop Commerce 4.7 API");
+                c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
+            });
+        }
+        else
+        {
+            app.UseExceptionHandler("/Error");
+            app.UseHsts();
+        }
 
         //configure the application HTTP request pipeline
         app.ConfigureRequestPipeline();
