@@ -21,11 +21,10 @@ using Nop.Web.Framework.Themes;
 using Nop.Web.Models.Common;
 using Nop.Web.Models.Sitemap;
 
-namespace Nop.Web.ApiControllers;
+namespace Nop.Web.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
-public partial class CommonController : ControllerBase
+[AutoValidateAntiforgeryToken]
+public partial class CommonController : BasePublicController
 {
     #region Fields
 
@@ -102,19 +101,18 @@ public partial class CommonController : ControllerBase
     #region Methods
 
     //page not found
-    //public virtual IActionResult PageNotFound()
-    //{
-    //    Response.StatusCode = 404;
-    //    Response.ContentType = "text/html";
+    public virtual IActionResult PageNotFound()
+    {
+        Response.StatusCode = 404;
+        Response.ContentType = "text/html";
 
-    //    return View();
-    //}
+        return View();
+    }
 
     //available even when a store is closed
     [CheckAccessClosedStore(ignore: true)]
     //available even when navigation is not allowed
     [CheckAccessPublicStore(ignore: true)]
-    [HttpPost("SetLanguage")]
     public virtual async Task<IActionResult> SetLanguage(int langid, string returnUrl = "")
     {
         var language = await _languageService.GetLanguageByIdAsync(langid);
@@ -147,7 +145,6 @@ public partial class CommonController : ControllerBase
 
     //available even when navigation is not allowed
     [CheckAccessPublicStore(ignore: true)]
-    [HttpPost("SetCurrency")]
     public virtual async Task<IActionResult> SetCurrency(int customerCurrency, string returnUrl = "")
     {
         var currency = await _currencyService.GetCurrencyByIdAsync(customerCurrency);
@@ -167,7 +164,6 @@ public partial class CommonController : ControllerBase
 
     //available even when navigation is not allowed
     [CheckAccessPublicStore(ignore: true)]
-    [HttpPost("SetTaxType")]
     public virtual async Task<IActionResult> SetTaxType(int customerTaxType, string returnUrl = "")
     {
         var taxDisplayType = (TaxDisplayType)Enum.ToObject(typeof(TaxDisplayType), customerTaxType);
@@ -187,16 +183,15 @@ public partial class CommonController : ControllerBase
     //contact us page
     //available even when a store is closed
     [CheckAccessClosedStore(ignore: true)]
-    [HttpGet("ContactUs")]
     public virtual async Task<IActionResult> ContactUs()
     {
         var model = new ContactUsModel();
         model = await _commonModelFactory.PrepareContactUsModelAsync(model, false);
 
-        return Ok(model);
+        return View(model);
     }
 
-    [HttpPost("ContactUs")]
+    [HttpPost, ActionName("ContactUs")]
     [ValidateCaptcha]
     //available even when a store is closed
     [CheckAccessClosedStore(ignore: true)]
@@ -225,14 +220,13 @@ public partial class CommonController : ControllerBase
             await _customerActivityService.InsertActivityAsync("PublicStore.ContactUs",
                 await _localizationService.GetResourceAsync("ActivityLog.PublicStore.ContactUs"));
 
-            return Ok(model);
+            return View(model);
         }
 
-        return Ok(model);
+        return View(model);
     }
 
     //contact vendor page
-    [HttpGet("ContactVendor")]
     public virtual async Task<IActionResult> ContactVendor(int vendorId)
     {
         if (!_vendorSettings.AllowCustomersToContactVendors)
@@ -245,10 +239,10 @@ public partial class CommonController : ControllerBase
         var model = new ContactVendorModel();
         model = await _commonModelFactory.PrepareContactVendorModelAsync(model, vendor, false);
 
-        return Ok(model);
+        return View(model);
     }
 
-    [HttpPost("ContactVendor")]
+    [HttpPost, ActionName("ContactVendor")]
     [ValidateCaptcha]
     public virtual async Task<IActionResult> ContactVendorSend(ContactVendorModel model, bool captchaValid)
     {
@@ -278,14 +272,13 @@ public partial class CommonController : ControllerBase
             model.SuccessfullySent = true;
             model.Result = await _localizationService.GetResourceAsync("ContactVendor.YourEnquiryHasBeenSent");
 
-            return Ok(model);
+            return View(model);
         }
 
-        return Ok(model);
+        return View(model);
     }
 
     //sitemap page
-    [HttpPost("Sitemap")]
     public virtual async Task<IActionResult> Sitemap(SitemapPageModel pageModel)
     {
         if (!_sitemapSettings.SitemapEnabled)
@@ -293,7 +286,7 @@ public partial class CommonController : ControllerBase
 
         var model = await _sitemapModelFactory.PrepareSitemapModelAsync(pageModel);
 
-        return Ok(model);
+        return View(model);
     }
 
     //SEO sitemap page
@@ -303,7 +296,6 @@ public partial class CommonController : ControllerBase
     [CheckAccessPublicStore(ignore: true)]
     //ignore SEO friendly URLs checks
     [CheckLanguageSeoCode(ignore: true)]
-    [HttpGet("SitemapXml")]
     public virtual async Task<IActionResult> SitemapXml(int? id)
     {
         if (!_sitemapXmlSettings.SitemapXmlEnabled)
@@ -320,7 +312,6 @@ public partial class CommonController : ControllerBase
         }
     }
 
-    [HttpPost("SetStoreTheme")]
     public virtual async Task<IActionResult> SetStoreTheme(string themeName, string returnUrl = "")
     {
         await _themeContext.SetWorkingThemeNameAsync(themeName);
@@ -336,7 +327,7 @@ public partial class CommonController : ControllerBase
         return Redirect(returnUrl);
     }
 
-    [HttpPost("EuCookieLawAccept")]
+    [HttpPost]
     //available even when a store is closed
     [CheckAccessClosedStore(ignore: true)]
     //available even when navigation is not allowed
@@ -345,12 +336,12 @@ public partial class CommonController : ControllerBase
     {
         if (!_storeInformationSettings.DisplayEuCookieLawWarning)
             //disabled
-            return BadRequest(new { stored = false });
+            return Json(new { stored = false });
 
         //save setting
         var store = await _storeContext.GetCurrentStoreAsync();
         await _genericAttributeService.SaveAttributeAsync(await _workContext.GetCurrentCustomerAsync(), NopCustomerDefaults.EuCookieLawAcceptedAttribute, true, store.Id);
-        return Ok(new { stored = true });
+        return Json(new { stored = true });
     }
 
     //robots.txt file
@@ -360,7 +351,6 @@ public partial class CommonController : ControllerBase
     [CheckAccessPublicStore(ignore: true)]
     //ignore SEO friendly URLs checks
     [CheckLanguageSeoCode(ignore: true)]
-    [HttpPost("RobotsTextFile")]
     public virtual async Task<IActionResult> RobotsTextFile()
     {
         var robotsFileContent = await _commonModelFactory.PrepareRobotsTextFileAsync();
@@ -369,22 +359,22 @@ public partial class CommonController : ControllerBase
     }
 
     //available even when a store is closed
-    //[CheckAccessClosedStore(ignore: true)]
-    ////available even when navigation is not allowed
-    //[CheckAccessPublicStore(ignore: true)]
-    //public virtual IActionResult GenericUrl()
-    //{
-    //    //seems that no entity was found
-    //    return InvokeHttp404();
-    //}
+    [CheckAccessClosedStore(ignore: true)]
+    //available even when navigation is not allowed
+    [CheckAccessPublicStore(ignore: true)]
+    public virtual IActionResult GenericUrl()
+    {
+        //seems that no entity was found
+        return InvokeHttp404();
+    }
 
     //store is closed
     //available even when a store is closed
-    //[CheckAccessClosedStore(ignore: true)]
-    //public virtual IActionResult StoreClosed()
-    //{
-    //    return View();
-    //}
+    [CheckAccessClosedStore(ignore: true)]
+    public virtual IActionResult StoreClosed()
+    {
+        return View();
+    }
 
     //helper method to redirect users. Workaround for GenericPathRoute class where we're not allowed to do it
     public virtual IActionResult InternalRedirect(string url, bool permanentRedirect)
@@ -416,15 +406,15 @@ public partial class CommonController : ControllerBase
         return Redirect(url);
     }
 
-    ////available even when a store is closed
-    //[CheckAccessClosedStore(ignore: true)]
-    ////available even when navigation is not allowed
-    //[CheckAccessPublicStore(ignore: true)]
-    //public virtual IActionResult FallbackRedirect()
-    //{
-    //    //nothing was found
-    //    return InvokeHttp404();
-    //}
+    //available even when a store is closed
+    [CheckAccessClosedStore(ignore: true)]
+    //available even when navigation is not allowed
+    [CheckAccessPublicStore(ignore: true)]
+    public virtual IActionResult FallbackRedirect()
+    {
+        //nothing was found
+        return InvokeHttp404();
+    }
 
     #endregion
 }
