@@ -81,11 +81,11 @@ public partial class Program
                 c.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
             });
         }
-        else
-        {
-            app.UseExceptionHandler("/Error");
-            app.UseHsts();
-        }
+        //else
+        //{
+        //    app.UseExceptionHandler("/Error");
+        //    app.UseHsts();
+        //}
 
         //configure the application HTTP request pipeline
         app.ConfigureRequestPipeline();
